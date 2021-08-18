@@ -13,9 +13,11 @@ const instance = axios.create({
   },
 });
 
+const WEBSITE_URL = process.env.WEBSITE_URL;
+
 class Model {
   static async slide() {
-    const URL = process.env.WEBSITE_URL;
+    const URL = WEBSITE_URL;
 
     const { data } = await axios.get(URL);
 
@@ -25,15 +27,15 @@ class Model {
     const slideItems = document.querySelectorAll(".slider-item");
 
     const list = [...slideItems].map((item) => {
-      const backgroundImage =
-        item.querySelector(".slider-item-img").dataset.src;
+      const thumbnail = item.querySelector(".slider-item-img").dataset.src;
       const title = item.dataset.title;
+      const views = item.dataset.views;
       const slug = toSlug(title);
 
-      return { backgroundImage, slug };
+      return { thumbnail, slug, views, name: title };
     });
 
-    return addInfo(list);
+    return list;
   }
 
   static async getEpisode(animeId, episodeIndex) {
@@ -99,36 +101,33 @@ class Model {
   }
 
   static async getRanking(slug) {
-    const { data } = await axios.get(
-      `${process.env.WEBSITE_URL}/bang-xep-hang/${slug}`
-    );
+    const { data } = await axios.get(`${WEBSITE_URL}/bang-xep-hang/${slug}`);
 
-    return addInfo(parseList(data));
+    return parseList(data);
   }
 
   static async getInfo(slug) {
-    const apiInfo = await getInfo(slug);
     const scrapedInfo = await scrapeInfo(slug);
 
-    const episodes = await this.getEpisodes(apiInfo.id);
+    const episodes = await this.getEpisodes(scrapedInfo.id);
 
-    return { ...apiInfo, ...scrapedInfo, episodes };
+    return { ...scrapedInfo, episodes };
   }
 
-  static async recentlyUpdated({ offset = 0, limit = LIMIT }) {
-    const { data } = await instance.get("/films", {
-      params: {
-        sort: "-updated_at",
-        limit,
-        offset,
-      },
-    });
+  static async recommended() {
+    const { data } = await axios.get(`${WEBSITE_URL}/hom-nay-xem-gi`);
 
-    return addInfo(data.data);
+    return parseList(data);
+  }
+
+  static async recentlyUpdated() {
+    const { data } = await axios.get(`${WEBSITE_URL}/tap-moi-nhat`);
+
+    return parseList(data);
   }
 
   static async scrapeInfo(slug) {
-    const { data } = await axios.get(`${process.env.WEBSITE_URL}/${slug}`);
+    const { data } = await axios.get(`${WEBSITE_URL}/${slug}`);
 
     const { window } = new JSDOM(data);
     const { document } = window;
@@ -153,14 +152,21 @@ class Model {
     return { genres, subTeams, description };
   }
 
-  static async getGenre(genre, offset, limit = LIMIT) {
-    const URL = `/films?genre=${genre}&limit=${limit}&offset=${offset}&sort=-updated_at`;
+  static async getGenre(genre, page = 1) {
+    const URL = `${WEBSITE_URL}/anime/${genre}/trang-${page}`;
 
-    const { data } = await instance.get(URL);
+    const { data } = await axios.get(URL);
 
-    // const list = await addInfo(data.data);
+    const { window } = new JSDOM(data);
+    const { document } = window;
 
-    return { data: data.data, total: data.total };
+    const total = document
+      .querySelector('[name="total-item"]')
+      .getAttribute("value");
+
+    const list = parseList(data);
+
+    return { data: list, total: Number(total) };
   }
 }
 
@@ -207,7 +213,7 @@ const addInfo = async (list) => {
 };
 
 const scrapeInfo = async (slug) => {
-  const { data } = await axios.get(`${process.env.WEBSITE_URL}/${slug}`);
+  const { data } = await axios.get(`${WEBSITE_URL}/${slug}`);
 
   const { window } = new JSDOM(data);
   const { document } = window;
@@ -223,13 +229,38 @@ const scrapeInfo = async (slug) => {
     return { name, url, slug };
   });
 
+  const { id, name } = document.querySelector(".container.play").dataset;
+
   const subTeams = [...subTeamsElement].map((team) => team.textContent);
 
   const description = document.querySelector(
     ".film-info-description"
   ).textContent;
 
-  return { genres, subTeams, description };
+  const views = parseViews(
+    document.querySelector(".film-info-views").textContent
+  );
+
+  const thumbnail = document
+    .querySelector('[property="og:image"]')
+    .getAttribute("content");
+
+  return {
+    genres,
+    subTeams,
+    description,
+    id: Number(id),
+    name,
+    views,
+    thumbnail,
+    slug,
+  };
+};
+
+const parseViews = (text) => {
+  if (!text) return;
+
+  return Number(text.replace("lượt xem", "").replace(/,/g, ""));
 };
 
 const parseList = (html) => {
@@ -240,9 +271,23 @@ const parseList = (html) => {
 
   const list = [...items].map((item) => {
     const url = item.getAttribute("href");
-    const slug = urlToSlug(url);
 
-    return { slug };
+    const slug = urlToSlug(url.split("/")[1]);
+
+    const thumbnail = item.querySelector(".tray-item-thumbnail").dataset.src;
+    const time = item
+      .querySelector(".tray-film-update")
+      ?.textContent.replace(" / ", "/");
+    const latestEpisode = {
+      name: item.querySelector(".tray-episode-name")?.textContent,
+      views: parseViews(item.querySelector(".tray-episode-views")?.textContent),
+    };
+    const name = item.querySelector(".tray-item-title")?.textContent;
+    const views = parseViews(
+      item.querySelector(".tray-film-views")?.textContent
+    );
+
+    return { slug, views, name, time, latestEpisode, thumbnail };
   });
 
   return list;

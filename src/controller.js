@@ -1,15 +1,11 @@
-const { TOTAL_ANIME, LIMIT } = require("./constants");
+const { LIMIT } = require("./constants");
 const Model = require("./model");
 const { pageToPagination } = require("./utils");
 
 class Controller {
-  static async getRecentlyUpdated(req, res, next) {
-    const { page = 1 } = req.query;
-
+  static async getRecentlyUpdated(_req, res, next) {
     try {
-      const recentlyUpdatedList = await Model.recentlyUpdated(
-        pageToPagination(page)
-      );
+      const recentlyUpdatedList = await Model.recentlyUpdated();
 
       res.json({ success: true, data: recentlyUpdatedList });
     } catch (err) {
@@ -72,10 +68,8 @@ class Controller {
     const { slug } = req.params;
     const { page = 1, limit } = req.query;
 
-    const { offset } = pageToPagination(page);
-
     try {
-      const { data, total } = await Model.getGenre(slug, offset);
+      const { data, total } = await Model.getGenre(slug, page);
 
       res.json({
         success: true,
@@ -114,14 +108,10 @@ class Controller {
   }
 
   static async getRecommended(_req, res, next) {
-    const offset = Math.floor(Math.random() * (TOTAL_ANIME - (LIMIT - 1)));
-
     try {
-      const recentlyUpdatedList = await Model.recentlyUpdated({
-        offset,
-      });
+      const recommendedList = await Model.recommended();
 
-      res.json({ success: true, data: recentlyUpdatedList });
+      res.json({ success: true, data: recommendedList });
     } catch (err) {
       next(err);
     }
