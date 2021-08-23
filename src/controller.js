@@ -1,6 +1,14 @@
+const corsAnywhere = require("cors-anywhere");
+
 const { LIMIT } = require("./constants");
 const Model = require("./model");
 const { pageToPagination } = require("./utils");
+
+let proxy = corsAnywhere.createServer({
+  originWhitelist: [], // Allow all origins
+  requireHeaders: [], // Do not require any headers.
+  removeHeaders: [], // Do not remove any headers.
+});
 
 class Controller {
   static async getRecentlyUpdated(_req, res, next) {
@@ -127,6 +135,11 @@ class Controller {
     } catch (err) {
       next(err);
     }
+  }
+
+  static async corsAnywhere(req, res) {
+    req.url = req.url.replace("/cors/", "/");
+    proxy.emit("request", req, res);
   }
 }
 
