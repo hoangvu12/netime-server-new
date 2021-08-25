@@ -49,7 +49,7 @@ class Model {
   }
 
   static async search(keyword, limit = LIMIT) {
-    const URL = `/search?q=${keyword}&limit=${limit}`;
+    const URL = `/search?q=${encodeURIComponent(keyword)}&limit=${limit}`;
     const { data } = await instance.get(URL);
 
     const list = data.data.map((anime) => {
