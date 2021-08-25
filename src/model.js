@@ -79,16 +79,32 @@ class Model {
       `/films/${animeId}/episodes/${episodeId}`
     );
 
-    const m3u8Source = data.sources.m3u8;
-    const source = m3u8Source.hls || m3u8Source.sd;
+    const sources = data.sources;
 
-    const m3u8 = encodeString(source)
-      .replace("vdicdn.com", "mephimanh.com")
-      .split("/")[4];
+    if (Array.isArray(sources.m3u8) ? !sources.m3u8.length : !sources.m3u8) {
+      const whitelistKeys = ["vip"];
+
+      const sourceKey = Object.keys(sources)
+        .filter((key) => !whitelistKeys.includes(key))
+        .find((key) => !!sources[key].length);
+
+      return {
+        videoSource: sources[sourceKey][0].src,
+      };
+    }
+
+    const m3u8Source = sources.m3u8;
+    const source =
+      m3u8Source.hls || m3u8Source.sd || m3u8Source[Object.keys(m3u8Source)[0]];
+
+    const m3u8 = encodeString(source);
+
+    const m3u8P = m3u8.replace("vdicdn.com", "mephimanh.com").split("/")[4];
+
+    const vSource = `https://ima21.xyz/hls/${m3u8P}/playlist.m3u8`;
 
     return {
-      videoSource:
-        "https://s9" + ".8giaitri.com/playlist/" + m3u8 + "/" + m3u8 + ".m3u8",
+      videoSource: vSource,
     };
   }
 
