@@ -5,9 +5,12 @@ const Model = require("./model");
 const { pageToPagination } = require("./utils");
 
 let proxy = corsAnywhere.createServer({
-  originWhitelist: [], // Allow all origins
-  requireHeaders: [], // Do not require any headers.
-  removeHeaders: [], // Do not remove any headers.
+  originWhitelist: [],
+  requireHeaders: [],
+  removeHeaders: [],
+  setHeaders: {
+    referer: "https://vuighe.net/",
+  },
 });
 
 class Controller {
