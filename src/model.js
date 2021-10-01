@@ -83,36 +83,43 @@ class Model {
 
     const sources = data.sources;
 
-    if (Array.isArray(sources.m3u8) ? !sources.m3u8.length : !sources.m3u8) {
-      const whitelistKeys = [];
+    const whitelistKeys = [];
 
-      const sourceKey = Object.keys(sources)
-        .filter(key => !whitelistKeys.includes(key))
-        .find(key => !!sources[key].length);
+    const sourceKey = Object.keys(sources)
+      .filter(key => !whitelistKeys.includes(key))
+      .find(key => !!sources[key].length);
 
-      let source = sources[sourceKey][0].src;
+    let source = sources[sourceKey][0].src;
 
-      if (sourceKey === "vip") {
-        source = `${CORS_API}/${source}`;
+    if (!source) {
+      const m3u8Source = sources.m3u8;
+
+      const source =
+        m3u8Source.hls ||
+        m3u8Source.sd ||
+        m3u8Source[Object.keys(m3u8Source)[0]];
+
+      const m3u8 = encodeString(source);
+
+      let vSource;
+
+      if (m3u8.includes("mephimanh")) {
+        const m3u8P = m3u8.split("/")[4];
+
+        vSource = `https://ima21.xyz/hls/${m3u8P}/playlist.m3u8`;
+      } else {
+        vSource = m3u8;
       }
 
       return {
-        videoSource: source
+        videoSource: vSource
       };
     }
 
-    const m3u8Source = sources.m3u8;
-    const source =
-      m3u8Source.hls || m3u8Source.sd || m3u8Source[Object.keys(m3u8Source)[0]];
-
-    const m3u8 = encodeString(source);
-
-    const m3u8P = m3u8.replace("vdicdn.com", "mephimanh.com").split("/")[4];
-
-    const vSource = `https://ima21.xyz/hls/${m3u8P}/playlist.m3u8`;
+    source = `${CORS_API}/${source}`;
 
     return {
-      videoSource: vSource
+      videoSource: source
     };
   }
 
